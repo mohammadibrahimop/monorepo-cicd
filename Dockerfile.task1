@@ -1,0 +1,70 @@
+# ============================================================
+# Dockerfile.task1
+# Task 1 Proof: Monorepo CI/CD Automation
+#
+# What this does:
+#   1. Copies the full project structure into the container
+#   2. Installs backend dependencies
+#   3. Runs the backend tests (simulates the test_matrix job)
+#   4. Displays the full workflow YAML so the supervisor can review it
+#   5. Validates the SonarQube docker-compose file exists
+#
+# HOW TO BUILD & RUN:
+#   docker build -f Dockerfile.task1 -t task1-cicd .
+#   docker run --rm task1-cicd
+# ============================================================
+
+FROM node:20-alpine
+
+LABEL task="Task 1 - Monorepo CI/CD Automation"
+LABEL description="Validates GitHub Actions workflow, runs backend tests, shows all config files"
+
+WORKDIR /app
+
+# ── Copy the full project ─────────────────────────────────────
+COPY . .
+
+# ── Install backend dependencies ──────────────────────────────
+RUN echo "" && \
+    echo "================================================" && \
+    echo "  STEP 1: Installing backend dependencies..." && \
+    echo "================================================" && \
+    cd src/backend && npm ci
+
+# ── Run backend tests (mirrors test_matrix job) ───────────────
+RUN echo "" && \
+    echo "================================================" && \
+    echo "  STEP 2: Running backend tests..." && \
+    echo "  (Mirrors GitHub Actions test_matrix job)" && \
+    echo "================================================" && \
+    cd src/backend && npm test
+
+# ── Display all generated files on container start ────────────
+CMD echo "" && \
+    echo "╔══════════════════════════════════════════════════════╗" && \
+    echo "║         TASK 1 — CI/CD PIPELINE PROOF OF WORK        ║" && \
+    echo "╚══════════════════════════════════════════════════════╝" && \
+    echo "" && \
+    echo "▶ FILE: .github/workflows/ci.cd.yml" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat .github/workflows/ci.cd.yml && \
+    echo "" && \
+    echo "▶ FILE: sonar-project.properties" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat sonar-project.properties && \
+    echo "" && \
+    echo "▶ FILE: docker-compose.sonar.yml" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat docker-compose.sonar.yml && \
+    echo "" && \
+    echo "▶ FILE: src/backend/index.js" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat src/backend/index.js && \
+    echo "" && \
+    echo "▶ FILE: src/backend/index.test.js" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat src/backend/index.test.js && \
+    echo "" && \
+    echo "╔══════════════════════════════════════════════════════╗" && \
+    echo "║  ✅  All files verified. Task 1 complete.             ║" && \
+    echo "╚══════════════════════════════════════════════════════╝"

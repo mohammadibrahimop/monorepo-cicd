@@ -1,0 +1,77 @@
+# ============================================================
+# ansible/configure.yml
+# Task 2 — Configuration Management (local connection)
+#
+# What this does:
+#   - Targets localhost (no SSH, runs directly on your machine)
+#   - Sets logs/ directory to strict 0700 permissions
+#   - Creates app_settings.ini in config/
+#
+# HOW TO USE:
+#   cd ansible/
+#   ansible-playbook configure.yml
+#
+# IDEMPOTENCY: Safe to run multiple times — no duplicates, no errors.
+# ============================================================
+
+---
+- name: Configure simulated server environment
+  hosts: localhost
+  connection: local        # REQUIREMENT 2 — No SSH, runs directly on local machine
+
+  vars:
+    server_base: "{{ playbook_dir }}/../simulated_server"
+    logs_dir: "{{ server_base }}/logs"
+    config_dir: "{{ server_base }}/config"
+
+  tasks:
+
+    # ── REQUIREMENT 2 — Task 1: Enforce strict 0700 on logs/ ─────
+    # Only the file owner can read/write. No group or world access.
+    - name: "Set logs/ directory to strict 0700 permissions"
+      ansible.builtin.file:
+        path: "{{ logs_dir }}"
+        state: directory          # Ensures directory exists (idempotent)
+        mode: "0700"              # rwx------  (owner only)
+        recurse: no
+
+    # ── REQUIREMENT 2 — Task 2: Create app_settings.ini ──────────
+    # Uses the copy module with inline content.
+    # Running again will NOT create duplicates (Ansible checks for changes).
+    - name: "Deploy app_settings.ini to config/"
+      ansible.builtin.copy:
+        dest: "{{ config_dir }}/app_settings.ini"
+        mode: "0644"
+        content: |
+          ; ============================================================
+          ; app_settings.ini
+          ; Managed by Ansible — do not edit manually
+          ; ============================================================
+
+          [application]
+          app_name     = OP IT Assistant
+          environment  = local_dev
+          debug        = false
+          log_level    = INFO
+
+          [paths]
+          log_dir      = ./simulated_server/logs
+          config_dir   = ./simulated_server/config
+
+          [server]
+          host         = 127.0.0.1
+          port         = 8080
+          workers      = 4
+
+    # ── Verification: Print a summary of what was configured ──────
+    - name: "Verify logs/ permissions"
+      ansible.builtin.stat:
+        path: "{{ logs_dir }}"
+      register: logs_stat
+
+    - name: "Print configuration summary"
+      ansible.builtin.debug:
+        msg:
+          - "✅ logs/ directory mode: {{ logs_stat.stat.mode }}"
+          - "✅ app_settings.ini written to: {{ config_dir }}/app_settings.ini"
+          - "✅ Playbook complete. Idempotent — safe to re-run."

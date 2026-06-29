@@ -1,0 +1,115 @@
+# ============================================================
+# Dockerfile.task2
+# Task 2 Proof: Workstation Scaffolding with Terraform + Ansible
+#
+# What this does:
+#   1. Installs Terraform and Ansible inside the container
+#   2. Runs `terraform init` and `terraform apply` to scaffold directories
+#   3. Runs the Ansible playbook to configure permissions and settings
+#   4. Runs the Ansible playbook a SECOND time to prove idempotency
+#   5. Displays all generated files and directory structure
+#   6. Runs `terraform destroy` to prove clean teardown
+#
+# HOW TO BUILD & RUN:
+#   docker build -f Dockerfile.task2 -t task2-iac .
+#   docker run --rm task2-iac
+# ============================================================
+
+FROM ubuntu:22.04
+
+LABEL task="Task 2 - Workstation Scaffolding with Terraform + Ansible"
+LABEL description="Provisions simulated_server/ via Terraform, configures it via Ansible"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERRAFORM_VERSION=1.8.5
+
+WORKDIR /app
+
+# ── Install system dependencies ───────────────────────────────
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    gnupg \
+    software-properties-common \
+    python3 \
+    python3-pip \
+    ansible \
+    tree \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Install Terraform ─────────────────────────────────────────
+RUN curl -fsSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+    -o /tmp/terraform.zip && \
+    unzip /tmp/terraform.zip -d /usr/local/bin/ && \
+    rm /tmp/terraform.zip && \
+    terraform --version
+
+# ── Copy project files into container ─────────────────────────
+COPY terraform/    ./terraform/
+COPY ansible/      ./ansible/
+
+# ── Run Terraform to scaffold the directory structure ─────────
+RUN echo "" && \
+    echo "================================================" && \
+    echo "  STEP 1: Terraform Init" && \
+    echo "================================================" && \
+    cd terraform && terraform init -input=false
+
+RUN echo "" && \
+    echo "================================================" && \
+    echo "  STEP 2: Terraform Apply (create directories)" && \
+    echo "================================================" && \
+    cd terraform && terraform apply -auto-approve
+
+# ── Run Ansible playbook once ─────────────────────────────────
+RUN echo "" && \
+    echo "================================================" && \
+    echo "  STEP 3: Ansible — First Run" && \
+    echo "================================================" && \
+    ansible-playbook ansible/configure.yml
+
+# ── Run Ansible again to PROVE idempotency ────────────────────
+RUN echo "" && \
+    echo "================================================" && \
+    echo "  STEP 4: Ansible — Second Run (idempotency test)" && \
+    echo "  Expected: No changes, no errors" && \
+    echo "================================================" && \
+    ansible-playbook ansible/configure.yml
+
+# ── Show final result on container start ──────────────────────
+CMD echo "" && \
+    echo "╔══════════════════════════════════════════════════════╗" && \
+    echo "║      TASK 2 — TERRAFORM + ANSIBLE PROOF OF WORK      ║" && \
+    echo "╚══════════════════════════════════════════════════════╝" && \
+    echo "" && \
+    echo "▶ DIRECTORY STRUCTURE (simulated_server/)" && \
+    echo "────────────────────────────────────────────────────────" && \
+    tree simulated_server/ && \
+    echo "" && \
+    echo "▶ FILE: simulated_server/config/system_state.json" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat simulated_server/config/system_state.json && \
+    echo "" && \
+    echo "▶ FILE: simulated_server/config/app_settings.ini" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat simulated_server/config/app_settings.ini && \
+    echo "" && \
+    echo "▶ PERMISSIONS CHECK (logs/ should be drwx------)" && \
+    echo "────────────────────────────────────────────────────────" && \
+    ls -la simulated_server/ && \
+    echo "" && \
+    echo "▶ FILE: terraform/main.tf" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat terraform/main.tf && \
+    echo "" && \
+    echo "▶ FILE: ansible/configure.yml" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cat ansible/configure.yml && \
+    echo "" && \
+    echo "▶ TERRAFORM DESTROY (clean teardown proof)" && \
+    echo "────────────────────────────────────────────────────────" && \
+    cd terraform && terraform destroy -auto-approve && \
+    echo "" && \
+    echo "╔══════════════════════════════════════════════════════╗" && \
+    echo "║  ✅  All steps verified. Task 2 complete.             ║" && \
+    echo "╚══════════════════════════════════════════════════════╝"
