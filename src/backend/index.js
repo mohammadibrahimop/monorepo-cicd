@@ -7,3 +7,4 @@ function calculateDiscount(price, discount) {
 }
 
 module.exports = calculateDiscount;
+ 
